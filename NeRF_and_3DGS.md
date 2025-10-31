@@ -32,9 +32,3 @@ Some reviewing material:
 * https://www.youtube.com/watch?v=JuH79E8rdKc
 
 
-
-Potential problems: 
-* What if we don't find a dataset that includes Depth information?
-* Do we have access to the finetuned model they made for DIFIX or the dataset they used? If we dont have the model they used, we would need to replicate their finetuning, which requires the data they used.
-* Could we use depth estimation models instead of Lidar points?
-* I can't find the exact Stable Difussion model they used as base, just the newest version in Stability AI's Hugging Face page.
