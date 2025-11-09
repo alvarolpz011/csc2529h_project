@@ -103,11 +103,6 @@ Download:
 https://huggingface.co/haofeixu/depthsplat/resolve/main/depthsplat-gs-small-re10k-256x256-view2-cfeab6b1.pth
 ```
 
-Place in:
-```
-/w/20251/oleksii/depthsplat/models/pretrained/
-```
-
 Final path:
 ```
 /w/20251/oleksii/depthsplat/pretrained/depthsplat-gs-small-re10k-256x256-view2-cfeab6b1.pth
@@ -133,7 +128,7 @@ Expected structure:
 
 ```bash
 cd ~/code/depthsplat
-ln -s /w/20251/oleksii/depthsplat/models models
+ln -s /w/20251/oleksii/depthsplat/pretrained pretrained
 ln -s /w/20251/oleksii/depthsplat/datasets datasets
 ```
 
