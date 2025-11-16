@@ -31,7 +31,7 @@ python download.py  --subset hash --hash 9641a1ed7963ce5ca734cff3e6ccea3dfa8bcb0
 Once downloaded, run the following script to generate the test data:
 
 ```bash
-python src/scripts/convert_dl3dv_test.py     --input_dir /w/20251/your_user_dir/datasets     --output_dir datasets/dl3dv/test     --img_subdir images_8     --n_test 1
+python src/scripts/convert_dl3dv_test.py     --input_dir /w/20251/your_user_dir/datasets     --output_dir datasets/dl3dv     --img_subdir images_8     --n_test 1
 ```
 ## 3. Update Dataset Index
 
@@ -75,6 +75,7 @@ CUDA_VISIBLE_DEVICES=0 python -m src.main \
 ```
 
 > **Notes:**
+> If you start getting an error that says "Tried allocating 131000 GiB to Memory" or something similar when trying to run this, it is solved by redoing all the steps for some reason. Still don't know why.
 > * This uses one of the existing JSON indexes. It may be possible to create your own index if needed. For now it seems their premade indixes should work fine.
 > Changing to use more views and to generate more novel views by using `dl3dv_start_0_distance_100_ctx_12v_video.json` generates more new images but requires way more VRAM (more than 24GB)
 > * Adjust parameters like `dataset.view_sampler.index_path` and `output_dir` as required.
