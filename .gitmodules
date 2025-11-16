@@ -2,5 +2,5 @@
 	path = Difix3D
 	url = https://github.com/nv-tlabs/Difix3D.git
 [submodule "scripts/depthsplat"]
-	path = scripts/depthsplat
+	path = depthsplat
 	url = https://github.com/cvg/depthsplat.git
