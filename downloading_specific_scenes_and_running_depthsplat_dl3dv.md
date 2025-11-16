@@ -9,19 +9,19 @@ These instructions guide you through downloading specific scenes from the DL3DV 
 
 > **Note:** It is suggested to use the `--clean_cache` flag, as it saves space by cleaning the cache folder created by the Huggingface Hub API.
 
-The download.py script will be in the `scripts` folder. You have to add your Hugging Face token inside download.py to authenticate.
+The `download_dl3dv`.py script will be in the `scripts` folder. You have to add your Hugging Face token inside download.py to authenticate.
 
 ### Example Commands
 
 ```bash
 # Download scene with hash 0853979305f7ecb80bd8fc2c8df916410d471ef04ed5f1a64e9651baa41d7695
-python download.py \
+python download_dl3dv.py \
   --subset hash \
   --hash 0853979305f7ecb80bd8fc2c8df916410d471ef04ed5f1a64e9651baa41d7695 \
   --odir /w/20251/alvarolopez/datasets
 
 # Download scene with hash 9641a1ed7963ce5ca734cff3e6ccea3dfa8bcb0b0a3ff78f65d32a080de2d71e
-python download.py \
+python download_dl3dv.py \
   --subset hash \
   --hash 9641a1ed7963ce5ca734cff3e6ccea3dfa8bcb0b0a3ff78f65d32a080de2d71e \
   --odir /w/20251/alvarolopez/datasets
