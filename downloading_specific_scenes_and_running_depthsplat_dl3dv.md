@@ -66,7 +66,7 @@ CUDA_VISIBLE_DEVICES=0 python -m src.main \
     mode=test \
     dataset/view_sampler=evaluation \
     dataset.view_sampler.num_context_views=6 \
-    dataset.view_sampler.index_path=assets/dl3dv_start_0_distance_100_ctx_12v_video.json \
+    dataset.view_sampler.index_path=assets/dl3dv_start_0_distance_50_ctx_6v_video_0_50.json \
     test.save_image=true \
     test.save_depth=true \
     test.save_depth_npy=true \
@@ -76,6 +76,7 @@ CUDA_VISIBLE_DEVICES=0 python -m src.main \
 
 > **Notes:**
 > * This uses one of the existing JSON indexes. It may be possible to create your own index if needed. For now it seems their premade indixes should work fine.
+> Changing to use more views and to generate more novel views by using `dl3dv_start_0_distance_100_ctx_12v_video.json` generates more new images but requires way more VRAM (more than 24GB)
 > * Adjust parameters like `dataset.view_sampler.index_path` and `output_dir` as required.
 > The view sampler index file defines, for each possible scene of the complete DL3DV dataset, which frames (views) are to be used as context views and what the target views will be. The target views are the ground truth that Depthsplat will try to render as novel views as close as possible. The PSNR and other metrix are computed based on these target views and the rendered views. The context views are the ones that will have the depthmaps computed by depthsplat. 
 
