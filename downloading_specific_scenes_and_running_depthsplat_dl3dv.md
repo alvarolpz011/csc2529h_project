@@ -15,16 +15,10 @@ The `download_dl3dv`.py script will be in the `scripts` folder. You have to add 
 
 ```bash
 # Download scene with hash 0853979305f7ecb80bd8fc2c8df916410d471ef04ed5f1a64e9651baa41d7695
-python download_dl3dv.py \
-  --subset hash \
-  --hash 0853979305f7ecb80bd8fc2c8df916410d471ef04ed5f1a64e9651baa41d7695 \
-  --odir /w/20251/<yout_user_dir>/datasets
+python download.py  --subset hash --hash 0853979305f7ecb80bd8fc2c8df916410d471ef04ed5f1a64e9651baa41d7695 --odir /w/20251/<your_user_dir>/datasets
 
 # Download scene with hash 9641a1ed7963ce5ca734cff3e6ccea3dfa8bcb0b0a3ff78f65d32a080de2d71e
-python download_dl3dv.py \
-  --subset hash \
-  --hash 9641a1ed7963ce5ca734cff3e6ccea3dfa8bcb0b0a3ff78f65d32a080de2d71e \
-  --odir /w/20251/<yout_user_dir>/datasets
+python download.py  --subset hash --hash 9641a1ed7963ce5ca734cff3e6ccea3dfa8bcb0b0a3ff78f65d32a080de2d71e --odir /w/20251/<your_user_dir>/datasets
 ```
 
 > **Notes:**
@@ -37,17 +31,13 @@ python download_dl3dv.py \
 Once downloaded, run the following script to generate the test data:
 
 ```bash
-python src/scripts/convert_dl3dv_test.py \
-    --input_dir /w/20251/<yout_user_dir>/datasets \
-    --output_dir datasets/dl3dv/test \
-    --img_subdir images_8 \
-    --n_test 1
+python src/scripts/convert_dl3dv_test.py     --input_dir /w/20251/your_user_dir/datasets     --output_dir datasets/dl3dv/test     --img_subdir images_8     --n_test 1
 ```
 ## 3. Update Dataset Index
 
 Edit generate_dl3dv_index.py to point to your dataset location:
 ```bash
-DATASET_PATH = Path("/u/<yout_user_dir>/Documents/csc2529/depthsplat/depthsplat/datasets/dl3dv/")
+DATASET_PATH = Path("<rest_of_path>/depthsplat/datasets/dl3dv/")
 ```
 
 ## 4. Download Pretrained Model
