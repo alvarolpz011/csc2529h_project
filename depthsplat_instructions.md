@@ -130,6 +130,7 @@ Expected structure:
 cd ~/code/depthsplat
 ln -s /w/20251/oleksii/depthsplat/pretrained pretrained
 ln -s /w/20251/oleksii/depthsplat/datasets datasets
+ln -s /w/20251/oleksii/depthsplat/outputs outputs
 ```
 
 ---
