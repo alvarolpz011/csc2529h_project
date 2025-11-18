@@ -13,6 +13,8 @@ for scene in SCENES_HASHES:
         input_image = load_image(f"{DEPTHSPLAT_DL3DV_OUTPUT_DIR}/{scene}/color/{image}")
         prompt = "remove degradation"
         output_image = pipe(prompt, image=input_image, num_inference_steps=1, timesteps=[199], guidance_scale=0.0).images[0]
-        output_image.save(f"/u/alvarolopez/Documents/csc2529/csc2529h_project/outputs/depthsplat_difix/{scene}_{image}")
+        if not os.path.exists(f"/u/alvarolopez/Documents/csc2529/csc2529h_project/outputs/depthsplat_difix/{scene}"):
+            os.makedirs(f"/u/alvarolopez/Documents/csc2529/csc2529h_project/outputs/depthsplat_difix/{scene}")
+        output_image.save(f"/u/alvarolopez/Documents/csc2529/csc2529h_project/outputs/depthsplat_difix/{scene}/{image}")
 
 
