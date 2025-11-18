@@ -37,7 +37,11 @@ python src/scripts/convert_dl3dv_test.py     --input_dir /w/20251/your_user_dir/
 
 Edit generate_dl3dv_index.py to point to your dataset location:
 ```bash
-DATASET_PATH = Path("<rest_of_path>/depthsplat/datasets/dl3dv/")
+DATASET_PATH = Path("/u/alvarolopez/Documents/csc2529/csc2529h_project/depthsplat/datasets/dl3dv/")
+```
+Then run the script to generate the index file:
+```bash
+python src/scripts/generate_dl3dv_index.py
 ```
 
 ## 4. Download Pretrained Model
