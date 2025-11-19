@@ -4,3 +4,6 @@
 [submodule "depthsplat"]
 	path = depthsplat
 	url = https://github.com/cvg/depthsplat.git
+[submodule "diff-gaussian-rasterization-modified"]
+	path = diff-gaussian-rasterization-modified
+	url = https://github.com/dcharatan/diff-gaussian-rasterization-modified
