@@ -15,10 +15,10 @@ The `download_dl3dv`.py script will be in the `scripts` folder. You have to add 
 
 ```bash
 # Download scene with hash 0853979305f7ecb80bd8fc2c8df916410d471ef04ed5f1a64e9651baa41d7695
-python download.py  --subset hash --hash 0853979305f7ecb80bd8fc2c8df916410d471ef04ed5f1a64e9651baa41d7695 --odir /w/20251/<your_user_dir>/datasets
+python download.py  --subset hash --hash 0853979305f7ecb80bd8fc2c8df916410d471ef04ed5f1a64e9651baa41d7695 --odir /w/20251/<your_user_dir>/datasets --only_level8
 
 # Download scene with hash 9641a1ed7963ce5ca734cff3e6ccea3dfa8bcb0b0a3ff78f65d32a080de2d71e
-python download.py  --subset hash --hash 9641a1ed7963ce5ca734cff3e6ccea3dfa8bcb0b0a3ff78f65d32a080de2d71e --odir /w/20251/<your_user_dir>/datasets
+python download.py  --subset hash --hash 9641a1ed7963ce5ca734cff3e6ccea3dfa8bcb0b0a3ff78f65d32a080de2d71e --odir /w/20251/<your_user_dir>/datasets --only_level8
 ```
 
 > **Notes:**
@@ -75,11 +75,11 @@ CUDA_VISIBLE_DEVICES=0 python -m src.main \
     test.save_depth=true \
     test.save_depth_npy=true \
     test.save_gaussian=true \
-    output_dir=outputs/dl3dv_single_scene
+    output_dir=../outputs/depthsplat/dl3dv_run_1/step1
 ```
 
 > **Notes:**
-> If you start getting an error that says "Tried allocating 131000 GiB to Memory" or something similar when trying to run this, it is solved by redoing all the steps for some reason. Still don't know why.
+> If you start getting an error that says "Tried allocating 131000 GiB to Memory" or something similar when trying to run this, it is solved by redoing all the steps for some reason. Still don't know why.8
 > * This uses one of the existing JSON indexes. It may be possible to create your own index if needed. For now it seems their premade indixes should work fine.
 > Changing to use more views and to generate more novel views by using `dl3dv_start_0_distance_100_ctx_12v_video.json` generates more new images but requires way more VRAM (more than 24GB)
 > * Adjust parameters like `dataset.view_sampler.index_path` and `output_dir` as required.
