@@ -20,3 +20,10 @@
 * Do we have access to the finetuned model they made for DIFIX or the dataset they used? If we dont have the model they used, we would need to replicate their finetuning, which requires the data they used.
 * Could we use depth estimation models instead of Lidar points?
 * I can't find the exact Stable Difussion model they used as base, just the newest version in Stability AI's Hugging Face page.
+
+
+To make envoronment that can run everything:
+- Install Python 3.10.14
+- Follow Oleksii's instructions (because we need to install the diff-gaussian-rasterzation package manually)
+- Install Difix3D requirements straight from their requirements.txt
+- Install pandas with pip install pandas
