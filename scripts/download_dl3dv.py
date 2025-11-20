@@ -17,13 +17,13 @@
 # TO download sspecific scenes from DL3DV dataset:
 # Note, it is suggested to use --clean_cache flag as it saves space by cleaning the cache folder created by huggingface hub API. 
 # e.g. a scene with hash 0853979305f7ecb80bd8fc2c8df916410d471ef04ed5f1a64e9651baa41d7695
-# python download.py  --subset hash --hash 0853979305f7ecb80bd8fc2c8df916410d471ef04ed5f1a64e9651baa41d7695 --odir /w/20251/alvarolopez/datasets
-# python download.py  --subset hash --hash 9641a1ed7963ce5ca734cff3e6ccea3dfa8bcb0b0a3ff78f65d32a080de2d71e --odir /w/20251/alvarolopez/datasets
+# python download.py  --subset hash --hash 0853979305f7ecb80bd8fc2c8df916410d471ef04ed5f1a64e9651baa41d7695 --odir /w/20251/alvarolopez/datasets --only_level8 
+# python download.py  --subset hash --hash 9641a1ed7963ce5ca734cff3e6ccea3dfa8bcb0b0a3ff78f65d32a080de2d71e --odir /w/20251/alvarolopez/datasets --only_level8
 # Note: takes like 40 minutes to download on 10 mb/s download speed for EACH scene.
 # Note, youll need to add your Huggingface token inside the script to be able to download the dataset.
 #hashes of individual scenes can be found in: https://huggingface.co/datasets/DL3DV/DL3DV-Benchmark/blob/main/benchmark-meta.csv
 
-# then: run python src/scripts/convert_dl3dv_test.py     --input_dir /w/20251/alvarolopez/datasets     --output_dir datasets/dl3dv/test     --img_subdir images_8     --n_test 1
+# then: run python src/scripts/convert_dl3dv_test.py     --input_dir /w/20251/alvarolopez/datasets     --output_dir datasets/dl3dv/test     --img_subdir images_8     --n_test 1 
 # this will generate the test data for that one single scene, which is gonna be one torch file per scene
 # then we need to modify the generate_dl3dv_index.py to ahve the path to our dataset, in this case: DATASET_PATH = Path("/u/alvarolopez/Documents/csc2529/depthsplat/depthsplat/datasets/dl3dv/")
 # Then you need to do wget to donwload the model on teh pretrained dir: wget -P pretrained https://huggingface.co/haofeixu/depthsplat/resolve/main/depthsplat-gs-base-dl3dv-256x448-randview2-6-02c7b19d.pth
@@ -42,7 +42,7 @@ import pickle
 import shutil
 from huggingface_hub import login
 
-login(token = "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")
+login(token = "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")
 
 api = HfApi()
 repo_root = 'DL3DV/DL3DV-10K-Benchmark'
@@ -82,7 +82,7 @@ def clean_huggingface_cache(cache_dir: str):
     shutil.rmtree(join(cache_dir, 'datasets--DL3DV--DL3DV-10K-Benchmark'))
 
 
-def download_by_hash(filepath_dict: dict, odir: str, hash: str, only_level4: bool):
+def download_by_hash(filepath_dict: dict, odir: str, hash: str, only_level4: bool, only_level8: bool = False):
     """ Given a hash, download the relevant data from the huggingface repo 
 
     :param filepath_dict: the cache dict that stores all the file relative paths 
@@ -99,6 +99,16 @@ def download_by_hash(filepath_dict: dict, odir: str, hash: str, only_level4: boo
             subdirname = os.path.basename(os.path.dirname(f))
 
             if 'images' in f and subdirname != 'images_4' or 'input' in f:
+                continue 
+
+            download_files.append(join(repo_root, f))
+            
+    if only_level8: # only download images_8 level data
+        download_files = []
+        for f in all_files:
+            subdirname = os.path.basename(os.path.dirname(f))
+
+            if 'images' in f and subdirname != 'images_8' or 'input' in f:
                 continue 
 
             download_files.append(join(repo_root, f))
@@ -126,6 +136,7 @@ def download_benchmark(args):
     output_dir = args.odir
     subset_opt = args.subset
     level4_opt = args.only_level4
+    level8_opt = args.only_level8
     hash_name  = args.hash
     is_clean_cache = args.clean_cache
 
@@ -162,7 +173,7 @@ def download_benchmark(args):
     
     # download the dataset 
     for cur_hash in tqdm(download_list):
-        if download_by_hash(filepath_dict, output_dir, cur_hash, level4_opt) == False:
+        if download_by_hash(filepath_dict, output_dir, cur_hash, level4_opt, level8_opt) == False:
             return False
 
         if is_clean_cache:
@@ -176,6 +187,7 @@ if __name__ == '__main__':
     parser.add_argument('--odir', type=str, help='output directory', default='DL3DV-10K-Benchmark')
     parser.add_argument('--subset', choices=['full', 'hash'], help='The subset of the benchmark to download', required=True)
     parser.add_argument('--only_level4', action='store_true', help='If set, only the images_4 resolution level will be downloaded to save space')
+    parser.add_argument('--only_level8', action='store_true', help='If set, only the images_8 resolution level will be downloaded to save space')
     parser.add_argument('--clean_cache', action='store_true', help='If set, will clean the huggingface cache to save space')
     parser.add_argument('--hash', type=str, help='If set subset=hash, this is the hash code of the scene to download', default='')
     params = parser.parse_args()
