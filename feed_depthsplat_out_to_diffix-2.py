@@ -36,7 +36,7 @@ def main():
     prev_root = Path(args.prev_input_dir).resolve() if args.prev_input_dir else None
     output_root.mkdir(parents=True, exist_ok=True)
 
-    difix_pipe = DifixPipeline()
+    difix_pipe = DifixPipeline.from_pretrained("nvidia/difix", trust_remote_code=True)
 
     for in_path in iter_image_files(input_root):
         rel = in_path.relative_to(input_root)
@@ -44,7 +44,7 @@ def main():
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
         depth_img = load_image(str(in_path))
-        result = difix_pipe(prompt="", image=depth_img).images[0]
+        result = difix_pipe(prompt="remove degradation", image=depth_img).images[0]
 
         if args.lambda_prior > 0 and prev_root is not None:
             prev_path = prev_root / rel
