@@ -31,7 +31,11 @@ To make envoronment that can run both DepthSplat and Difix3D (recommended to use
     ```bash
     conda activate depthsplat_difix
     ```
-3. Following Oleksii's instructions for Depthsplat environment (because we need to install the diff-gaussian-rasterzation package manually):
+3. Initialize submodules:
+    ```bash
+    git submodule update --init --recursive
+    ```
+4. Following Oleksii's instructions for Depthsplat environment (because we need to install the diff-gaussian-rasterzation package manually):
     1. `pip install --upgrade pip wheel`
     2. Go to the diff-gaussian-rasterization-modified submodule dir: `cd diff-gaussian-rasterization-modified`
     3. `nano cuda_rasterizer/rasterizer_impl.h`
@@ -58,10 +62,13 @@ To make envoronment that can run both DepthSplat and Difix3D (recommended to use
         sed -i '/diff-gaussian-rasterization/d' requirements.txt
         ```
     10. `pip install -r requirements.txt`
-4. `cd ../Difix3D`
-5. `pip install -r requirements.txt`
-6. `pip install pandas`
-7. Al done. You should have an environment that can run both DepthSplat and Diffix code.
+    11. `mkdir /w/20251/<your_user_dir>/pretrained`
+    12. `ln -s /w/20251/<your_user_dir>/pretrained pretrained`
+    13. `wget -P /w/20251/<your_user_dir>/pretrained https://huggingface.co/haofeixu/depthsplat/resolve/main/depthsplat-gs-base-dl3dv-256x448-randview2-6-02c7b19d.pth`
+5. `cd ../Difix3D`
+6. `pip install -r requirements.txt`
+7. `pip install pandas`
+8. Al done. You should have an environment that can run both DepthSplat and Diffix code.
 
 ## Setting up the DL3DV Dataset:
 
@@ -76,7 +83,7 @@ Note that the path where the dataset is downloaded will be important for running
 python download_dl3dv.py  --subset hash --hash 0853979305f7ecb80bd8fc2c8df916410d471ef04ed5f1a64e9651baa41d7695 --odir /w/20251/<your_user_dir>/datasets --only_level8
 
 # Download scene with hash 9641a1ed7963ce5ca734cff3e6ccea3dfa8bcb0b0a3ff78f65d32a080de2d71e
-python download.py  --subset hash --hash 9641a1ed7963ce5ca734cff3e6ccea3dfa8bcb0b0a3ff78f65d32a080de2d71e --odir /w/20251/<your_user_dir>/datasets --only_level8
+python download_dl3dv.py  --subset hash --hash 9641a1ed7963ce5ca734cff3e6ccea3dfa8bcb0b0a3ff78f65d32a080de2d71e --odir /w/20251/<your_user_dir>/datasets --only_level8
 ```
 
 > **Notes:**
