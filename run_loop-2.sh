@@ -15,9 +15,10 @@ NUM_STEPS="${NUM_STEPS:-4}"
 LAMBDA_PRIOR="${LAMBDA_PRIOR:-0.0}"
 mkdir -p "${DEPTHSPLAT_OUT_ROOT}"
 mkdir -p "${DIFIX_OUT_ROOT}"
-cd depthsplat || exit 1
+
 
 run_depthsplat() {
+  cd depthsplat 
   local in_dir="$1"
   local out_dir="$2"
   mkdir -p "${out_dir}"
@@ -29,6 +30,7 @@ run_depthsplat() {
 compute_psnr() {
   local pred_dir="$1"
   local tag="$2"
+  cd ..
   python scripts/compute_psnr.py --gt_dir "${DATASET_GT_DIR}" --pred_dir "${pred_dir}" --tag "${tag}"
 }
 
@@ -46,10 +48,10 @@ for (( STEP=0; STEP<=NUM_STEPS; STEP++ )); do
   compute_psnr "${DEPTH_OUT_STEP}" "depthsplat_step${STEP}"
 
   if [ "${STEP}" -eq 0 ]; then
-    python feed_depthsplat_out_to_diffix.py       --input_dir "${DEPTH_OUT_STEP}"       --output_dir "${DIFIX_OUT_STEP}"       --prev_input_dir "${DATASET_GT_DIR}"       --lambda_prior "${LAMBDA_PRIOR}"
+    python feed_depthsplat_out_to_diffix-2.py       --input_dir "${DEPTH_OUT_STEP}"       --output_dir "${DIFIX_OUT_STEP}"       --prev_input_dir "${DATASET_GT_DIR}"       --lambda_prior "${LAMBDA_PRIOR}"
   else
     PREV_INPUT="${DEPTHSPLAT_OUT_ROOT}/step$((STEP - 1))"
-    python feed_depthsplat_out_to_diffix.py       --input_dir "${DEPTH_OUT_STEP}"       --output_dir "${DIFIX_OUT_STEP}"       --prev_input_dir "${PREV_INPUT}"       --lambda_prior "${LAMBDA_PRIOR}"
+    python feed_depthsplat_out_to_diffix-2.py       --input_dir "${DEPTH_OUT_STEP}"       --output_dir "${DIFIX_OUT_STEP}"       --prev_input_dir "${PREV_INPUT}"       --lambda_prior "${LAMBDA_PRIOR}"
   fi
 
   compute_psnr "${DIFIX_OUT_STEP}" "diffix_step${STEP}"
