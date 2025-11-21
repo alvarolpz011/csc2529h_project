@@ -15,6 +15,7 @@ NUM_STEPS="${NUM_STEPS:-4}"
 LAMBDA_PRIOR="${LAMBDA_PRIOR:-0.0}"
 mkdir -p "${DEPTHSPLAT_OUT_ROOT}"
 mkdir -p "${DIFIX_OUT_ROOT}"
+cd depthsplat || exit 1
 
 run_depthsplat() {
   local in_dir="$1"
@@ -36,7 +37,7 @@ for (( STEP=0; STEP<=NUM_STEPS; STEP++ )); do
   DIFIX_OUT_STEP="${DIFIX_OUT_ROOT}/step${STEP}"
 
   if [ "${STEP}" -eq 0 ]; then
-    run_depthsplat "${DATASET_GT_DIR}" "${DEPTH_OUT_STEP}"
+    run_depthsplat "${DATASET_GT_INDEXED_DIR}" "${DEPTH_OUT_STEP}"
   else
     PREV="${DIFIX_OUT_ROOT}/step$((STEP - 1))"
     run_depthsplat "${PREV}" "${DEPTH_OUT_STEP}"
