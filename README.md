@@ -35,7 +35,8 @@ To make envoronment that can run both DepthSplat and Difix3D (recommended to use
     ```bash
     git submodule update --init --recursive
     ```
-4. Following Oleksii's instructions for Depthsplat environment (because we need to install the diff-gaussian-rasterzation package manually):
+4. Copy `.env.example` to `.env` and edit the variables inside to your paths.
+5. Following Oleksii's instructions for Depthsplat environment (because we need to install the diff-gaussian-rasterzation package manually):
     1. `pip install --upgrade pip wheel`
     2. Go to the diff-gaussian-rasterization-modified submodule dir: `cd diff-gaussian-rasterization-modified`
     3. `nano cuda_rasterizer/rasterizer_impl.h`
@@ -65,14 +66,14 @@ To make envoronment that can run both DepthSplat and Difix3D (recommended to use
     11. `mkdir /w/20251/<your_user_dir>/pretrained`
     12. `ln -s /w/20251/<your_user_dir>/pretrained pretrained`
     13. `wget -P /w/20251/<your_user_dir>/pretrained https://huggingface.co/haofeixu/depthsplat/resolve/main/depthsplat-gs-base-dl3dv-256x448-randview2-6-02c7b19d.pth`
-5. `cd ../Difix3D`
-6. `pip install -r requirements.txt`
-7. `pip install pandas`
-8. Al done. You should have an environment that can run both DepthSplat and Diffix code.
+6. `cd ../Difix3D`
+7. `pip install -r requirements.txt`
+8. `pip install pandas`
+9. Al done. You should have an environment that can run both DepthSplat and Diffix code.
 
 ## Setting up the DL3DV Dataset:
 
-The `download_dl3dv.py` script will be in the `scripts` folder. You have to add your Hugging Face token inside download.py to authenticate.
+The `download_dl3dv.py` script will be in the `scripts` folder. You have to add your Hugging Face token inside `.env` to authenticate.
 
 Note that the path where the dataset is downloaded will be important for running the loop.
 
@@ -96,7 +97,7 @@ python download_dl3dv.py  --subset hash --hash 9641a1ed7963ce5ca734cff3e6ccea3df
 ## Running DepthSplat + Difix
 With the dataset downloaded dataset, now all that's left to do is run the loop with `run_loop.sh`. The code is set to run 5 steps in the DepthSplat-Difix loop. 
 
-Before running `run_loop.sh`, you'll need to set up the variables at the top of the file:
+Before running `run_loop.sh`, you'll need to set up the variables in `.env` file:
 
 * `DEPTHSPLAT_OUTPUTS_BASE`: just the directory where you want the depthsplat outputs to be saved.
 * `DEPTHSPLAT_DIR`= the directory where the main depthsplat directory is.

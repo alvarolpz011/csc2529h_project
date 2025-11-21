@@ -1,10 +1,17 @@
 #!/bin/bash
 
 # Configuration
-DEPTHSPLAT_OUTPUTS_BASE="/u/alvarolopez/Documents/csc2529/csc2529h_project/outputs/depthsplat"
-DEPTHSPLAT_DIR="/u/alvarolopez/Documents/csc2529/csc2529h_project/depthsplat"
-ORIGINAL_DOWNLOADED_DATASET_DIR="/w/20251/alvarolopez/datasets"
-DIFIX_OUTPUTS_BASE="/u/alvarolopez/Documents/csc2529/csc2529h_project/outputs/depthsplat_difix"
+ENV_FILE=".env"
+if [ -f "$ENV_FILE" ]; then
+    echo "Loading configuration from $ENV_FILE"
+    while IFS='=' read -r key value; do
+        [[ "$key" =~ ^#.* ]] || [[ -z "$key" ]] && continue
+        export "$key"="$(echo "$value" | tr -d '"')"
+    done < "$ENV_FILE"
+else
+    echo "Error: $ENV_FILE not found. Exiting."
+    exit 1
+fi
 
 # Step 1: Determine run_number
 echo "Finding the latest run number..."
@@ -35,7 +42,7 @@ mkdir -p "$RUN_PATH"
 # Step 2: Activate conda environment
 echo "Activating conda environment..."
 eval "$(conda shell.bash hook)"
-conda activate depthsplat_difix
+conda activate "$CONDA_ENV_NAME"
 
 # Step 3: Navigate to depthsplat directory
 cd "$DEPTHSPLAT_DIR" || exit 1
@@ -58,7 +65,7 @@ echo "Running depthsplat model..."
 OUTPUT_STEP_DIR="${RUN_PATH}/step${STEP_NUMBER}"
 mkdir -p "$OUTPUT_STEP_DIR"
 
-CUDA_VISIBLE_DEVICES=0 python -m src.main \
+CUDA_VISIBLE_DEVICES="$CUDA_DEVICE" python -m src.main \
   +experiment=dl3dv \
   dataset.test_chunk_interval=1 \
   dataset.roots=[datasets/dl3dv] \
@@ -94,6 +101,14 @@ if [ -d "${OUTPUT_STEP_DIR}/images" ]; then
     fi
   done
 fi
+
+echo "Calculating TRUE metrics for Step ${STEP_NUMBER}..."
+cd ..
+python scripts/evaluate_step.py \
+    --pred_dir "${OUTPUT_STEP_DIR}/images" \
+    --gt_root "$ORIGINAL_DOWNLOADED_DATASET_DIR"
+cd "$DEPTHSPLAT_DIR" || exit 1
+
 
 # Step 8: Navigate to parent directory
 cd .. || exit 1
@@ -247,10 +262,13 @@ for ((i=0; i<5; i++)); do
       done
     fi
 
-    # Step 8: Navigate to parent directory
-    cd .. || exit 1
-
-    if i == 4; then
+    echo "Calculating TRUE metrics for Step ${STEP_NUMBER}..."
+    cd ..
+    python scripts/evaluate_step.py \
+        --pred_dir "${OUTPUT_STEP_DIR}/images" \
+        --gt_root "$ORIGINAL_DOWNLOADED_DATASET_DIR"
+    
+    if (( i == 4 )); then
         echo "Final iteration completed. Exiting loop."
         echo "Pipeline completed successfully!"
         echo "Output directory: $DIFIX_RUN_DIR"
@@ -334,4 +352,3 @@ for ((i=0; i<5; i++)); do
     python scripts/linear_interpolation.py --input_dir "${DIFIX_RUN_DIR}/step${STEP_NUMBER}"
 
 done
-

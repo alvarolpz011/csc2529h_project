@@ -40,9 +40,12 @@ import argparse
 import traceback
 import pickle
 import shutil
+import dotenv
 from huggingface_hub import login
 
-login(token = "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")
+dotenv.load_dotenv()
+
+login(token=os.getenv('HUGGINGFACE_TOKEN'))
 
 api = HfApi()
 repo_root = 'DL3DV/DL3DV-10K-Benchmark'
