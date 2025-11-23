@@ -21,15 +21,39 @@ python3 src/create_json.py
 
 -----
 
-## 🚀 Training Without Degradation
+## Running All Experiments
 
-This section details the training and evaluation steps using **clean** input data (without degradation).
+To run the experiments, use the following command:
+
+```bash
+bash run_experiment.sh
+```
+
+## Running Individual Experiments
+
+To run individual experiments, use the commands below.
+
+### **Train Difix (Base, Clean)**
+
+```bash
+accelerate launch --mixed_precision=bf16 src/train_difix.py \
+    --output_dir=./outputs/lego/clean/base \
+    --dataset_path="data/lego.json" \
+    --max_train_steps 2000 \
+    --num_training_epochs 50 \
+    --resolution=512 \
+    --learning_rate 1e-4 \
+    --train_batch_size=1 \
+    --lambda_lpips 1.0 --lambda_l2 1.0 --lambda_gram 1.0 \
+    --tracker_project_name "difix" \
+    --tracker_run_name "lego-clean-base"
+```
 
 ### **Train Difix (Depth-based, Clean)**
 
 ```bash
 accelerate launch --mixed_precision=bf16 src/train_difix.py \
-    --output_dir=./outputs/difix_depth_clean/lego \
+    --output_dir=./outputs/lego/clean/depth \
     --dataset_path="data/lego.json" \
     --max_train_steps 2000 \
     --num_training_epochs 50 \
@@ -37,16 +61,16 @@ accelerate launch --mixed_precision=bf16 src/train_difix.py \
     --learning_rate 1e-4 \
     --train_batch_size=1 \
     --lambda_lpips 1.0 --lambda_l2 1.0 --lambda_gram 1.0 \
-    --tracker_project_name "difix-depth-clean" \
-    --tracker_run_name "lego-depth-clean" \
+    --tracker_project_name "difix" \
+    --tracker_run_name "lego-clean-depth" \
     --use_depth
 ```
 
-### **Train Difix (Standard, Clean)**
+### **Train Difix (Canny-based, Clean)**
 
 ```bash
 accelerate launch --mixed_precision=bf16 src/train_difix.py \
-    --output_dir=./outputs/difix_standard_clean/lego \
+    --output_dir=./outputs/lego/clean/canny \
     --dataset_path="data/lego.json" \
     --max_train_steps 2000 \
     --num_training_epochs 50 \
@@ -54,30 +78,16 @@ accelerate launch --mixed_precision=bf16 src/train_difix.py \
     --learning_rate 1e-4 \
     --train_batch_size=1 \
     --lambda_lpips 1.0 --lambda_l2 1.0 --lambda_gram 1.0 \
-    --tracker_project_name "difix-depth-clean" \
-    --tracker_run_name "lego-standard-clean"
+    --tracker_project_name "difix" \
+    --tracker_run_name "lego-clean-canny" \
+    --use_canny
 ```
 
-### **Evaluate Metrics (Clean)**
-
-```bash
-python3 src/eval_metrics.py \
-    --ckpt_standard outputs/difix_standard_clean/lego/checkpoints/model_2000.pkl \
-    --ckpt_depth outputs/difix_depth_clean/lego/checkpoints/model_2000.pkl \
-    --dataset_path data/lego.json
-```
-
------
-
-## 🧪 Training With Degradation
-
-This section details the training and evaluation steps using **degraded** input data.
-
-### **Train Difix (Depth-based, Degraded)**
+### **Train Difix (Depth and Canny, Clean)**
 
 ```bash
 accelerate launch --mixed_precision=bf16 src/train_difix.py \
-    --output_dir=./outputs/difix_depth_degraded/lego \
+    --output_dir=./outputs/lego/clean/depth_canny \
     --dataset_path="data/lego.json" \
     --max_train_steps 2000 \
     --num_training_epochs 50 \
@@ -85,37 +95,17 @@ accelerate launch --mixed_precision=bf16 src/train_difix.py \
     --learning_rate 1e-4 \
     --train_batch_size=1 \
     --lambda_lpips 1.0 --lambda_l2 1.0 --lambda_gram 1.0 \
-    --tracker_project_name "difix-depth-degraded" \
-    --tracker_run_name "lego-depth-degraded" \
+    --tracker_project_name "difix" \
+    --tracker_run_name "lego-clean-depth_canny" \
     --use_depth \
-    --degrade_inputs
+    --use_canny
 ```
 
-### **Train Difix (Standard, Degraded)**
-
-```bash
-accelerate launch --mixed_precision=bf16 src/train_difix.py \
-    --output_dir=./outputs/difix_standard_degraded/lego \
-    --dataset_path="data/lego.json" \
-    --max_train_steps 2000 \
-    --num_training_epochs 50 \
-    --resolution=512 \
-    --learning_rate 1e-4 \
-    --train_batch_size=1 \
-    --lambda_lpips 1.0 --lambda_l2 1.0 --lambda_gram 1.0 \
-    --tracker_project_name "difix-depth-degraded" \
-    --tracker_run_name "lego-standard-degraded" \
-    --degrade_inputs
-```
-
-### **Evaluate Metrics (Degraded)**
-
-**Note:** The `--degrade_inputs` flag is crucial here to apply the same corruption during testing.
+## **Evaluate Metrics (Clean)**
 
 ```bash
 python3 src/eval_metrics.py \
-    --ckpt_standard outputs/difix_standard_degraded/lego/checkpoints/model_2000.pkl \
-    --ckpt_depth outputs/difix_depth_degraded/lego/checkpoints/model_2000.pkl \
     --dataset_path data/lego.json \
-    --degrade_inputs
+    --checkpoint_path outputs/lego/clean/base/checkpoints/model_2000.pkl \
+    --run_name "lego-clean-base"
 ```

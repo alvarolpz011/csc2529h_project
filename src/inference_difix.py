@@ -2,6 +2,7 @@ import os
 import imageio
 import argparse
 import numpy as np
+import cv2
 from PIL import Image
 from glob import glob
 from tqdm import tqdm
@@ -13,8 +14,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_image', type=str, required=True, help='Path to the input image or directory')
     parser.add_argument('--ref_image', type=str, default=None, help='Path to the reference image or directory')
-    # NEW: Add depth argument
     parser.add_argument('--depth_image', type=str, default=None, help='Path to the depth image or directory')
+    parser.add_argument('--canny_image', type=str, default=None, help='Path to the canny image or directory. If None and use_canny is set, computed from input.')
     parser.add_argument('--height', type=int, default=512, help='Height of the input image')
     parser.add_argument('--width', type=int, default=512, help='Width of the input image')
     parser.add_argument('--prompt', type=str, required=True, help='The prompt to be used')
@@ -24,19 +25,23 @@ if __name__ == "__main__":
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--timestep', type=int, default=199)
     parser.add_argument('--video', action='store_true')
-    # NEW: Flag to initialize adapter
+    
+    # Adapter Flags
     parser.add_argument('--use_depth', action='store_true', help='Initialize model with depth adapter')
+    parser.add_argument('--use_canny', action='store_true', help='Initialize model with canny adapter')
+    
     args = parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
 
-    # Initialize model with depth flag
+    # Initialize model with flags
     model = Difix(
         pretrained_name=args.model_name,
         pretrained_path=args.model_path,
         timestep=args.timestep,
         mv_unet=True if args.ref_image is not None else False,
-        use_depth_adapter=args.use_depth  # Pass the flag here
+        use_depth_adapter=args.use_depth,
+        use_canny_adapter=args.use_canny
     )
     model.set_eval()
 
@@ -54,14 +59,23 @@ if __name__ == "__main__":
             ref_images = [args.ref_image]
         assert len(input_images) == len(ref_images)
 
-    # NEW: Load depths
+    # Load depths
     depth_images = None
     if args.depth_image:
         if os.path.isdir(args.depth_image):
             depth_images = sorted(glob(os.path.join(args.depth_image, "*")))
         else:
             depth_images = [args.depth_image]
-        assert len(input_images) == len(depth_images), "Mismatch in input and depth image counts"
+        assert len(input_images) == len(depth_images)
+
+    # Load Canny (Explicit)
+    canny_images = None
+    if args.canny_image:
+        if os.path.isdir(args.canny_image):
+            canny_images = sorted(glob(os.path.join(args.canny_image, "*")))
+        else:
+            canny_images = [args.canny_image]
+        assert len(input_images) == len(canny_images)
 
     # Process
     output_images = []
@@ -69,17 +83,29 @@ if __name__ == "__main__":
         image = Image.open(input_path).convert('RGB')
         ref = Image.open(ref_images[i]).convert('RGB') if args.ref_image else None
         
-        # NEW: Load depth map
+        # Load depth map
         depth = None
         if depth_images:
             depth = Image.open(depth_images[i]).convert('L')
+
+        # Handle Canny
+        canny = None
+        if args.use_canny:
+            if canny_images:
+                canny = Image.open(canny_images[i]).convert('L')
+            else:
+                # Compute on the fly
+                image_np = np.array(image)
+                edges = cv2.Canny(image_np, 100, 200)
+                canny = Image.fromarray(edges).convert("L")
 
         output_image = model.sample(
             image,
             height=args.height,
             width=args.width,
             ref_image=ref,
-            depth_map=depth, # Pass depth map
+            depth_map=depth, 
+            canny_map=canny,
             prompt=args.prompt
         )
         output_images.append(output_image)

@@ -55,7 +55,8 @@ def main(args):
         lora_rank_vae=args.lora_rank_vae, 
         timestep=args.timestep, 
         mv_unet=args.mv_unet,
-        use_depth_adapter=args.use_depth # Controlled by flag now
+        use_depth_adapter=args.use_depth,
+        use_canny_adapter=args.use_canny,
     )
     net_difix.set_train()
 
@@ -74,33 +75,36 @@ def main(args):
     net_lpips = lpips.LPIPS(net='vgg').cuda()
     net_lpips.requires_grad_(False)
     
-    net_vgg = torchvision.models.vgg16(pretrained=True).features
+    net_vgg = torchvision.models.vgg16(weights="DEFAULT").features
     for param in net_vgg.parameters():
         param.requires_grad_(False)
 
     # Optimizer setup
     layers_to_opt = []
     
-    # 1. Adapter (Only if enabled)
+    # 1. Depth Adapter
     if net_difix.adapter is not None:
         print("Training WITH Depth Adapter parameters.")
         layers_to_opt += list(net_difix.adapter.parameters())
-    else:
-        print("Training WITHOUT Depth Adapter (Standard Mode).")
+    
+    # 2. Canny Adapter
+    if net_difix.adapter_canny is not None:
+        print("Training WITH Canny Adapter parameters.")
+        layers_to_opt += list(net_difix.adapter_canny.parameters())
 
-    # 2. VAE LoRA (Always trained)
+    # 3. VAE LoRA (Always trained)
     for n, _p in net_difix.vae.named_parameters():
         if "lora" in n and "vae_skip" in n:
             assert _p.requires_grad
             layers_to_opt.append(_p)
             
-    # 3. VAE Skip Convs (Always trained)
+    # 4. VAE Skip Convs (Always trained)
     layers_to_opt = layers_to_opt + list(net_difix.vae.decoder.skip_conv_1.parameters()) + \
         list(net_difix.vae.decoder.skip_conv_2.parameters()) + \
         list(net_difix.vae.decoder.skip_conv_3.parameters()) + \
         list(net_difix.vae.decoder.skip_conv_4.parameters())
 
-    optimizer = torch.optim.AdamW(layers_to_opt, lr=args.learning_rate,
+    optimizer = torch.optim.AdamW(list(set(layers_to_opt)), lr=args.learning_rate,
         betas=(args.adam_beta1, args.adam_beta2), weight_decay=args.adam_weight_decay,
         eps=args.adam_epsilon,)
     lr_scheduler = get_scheduler(args.lr_scheduler, optimizer=optimizer,
@@ -112,7 +116,8 @@ def main(args):
         dataset_path=args.dataset_path, 
         split="train", 
         tokenizer=net_difix.tokenizer,
-        degrade_inputs=args.degrade_inputs
+        degrade_inputs=args.degrade_inputs,
+        load_canny=args.use_canny
     )
     dl_train = torch.utils.data.DataLoader(dataset_train, batch_size=args.train_batch_size, shuffle=True, num_workers=args.dataloader_num_workers)
     dataset_val = PairedDataset(dataset_path=args.dataset_path, split="test", tokenizer=net_difix.tokenizer)
@@ -152,6 +157,8 @@ def main(args):
     net_difix.to(accelerator.device, dtype=weight_dtype)
     if net_difix.adapter: 
         net_difix.adapter.to(accelerator.device, dtype=weight_dtype)
+    if net_difix.adapter_canny:
+        net_difix.adapter_canny.to(accelerator.device, dtype=weight_dtype)
     net_lpips.to(accelerator.device, dtype=weight_dtype)
     net_vgg.to(accelerator.device, dtype=weight_dtype)
     
@@ -162,10 +169,43 @@ def main(args):
     net_lpips, net_vgg = accelerator.prepare(net_lpips, net_vgg)
     t_vgg_renorm =  transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
 
-    # Trackers
     if accelerator.is_main_process:
-        init_kwargs = {"wandb": {"name": args.tracker_run_name, "dir": args.output_dir}}        
+        # 1. Clean Dataset Name
+        dataset_name = os.path.splitext(os.path.basename(args.dataset_path))[0]
+        
+        # 2. Clean Mode String
+        mode_str = "degraded" if args.degrade_inputs else "clean"
+        
+        # 3. Create a Single "Model Variant" String (The missing piece for easy filtering)
+        if args.use_depth and args.use_canny:
+            model_variant = "both_adapters"
+        elif args.use_depth:
+            model_variant = "depth_adapter"
+        elif args.use_canny:
+            model_variant = "canny_adapter"
+        else:
+            model_variant = "base_model"
+
+        # 4. Construct Group Name
+        # Grouping by variant + dataset allows comparing clean vs degraded lines on one chart
+        group_name = f"{dataset_name}-{model_variant}"
+
+        init_kwargs = {
+            "wandb": {
+                "name": args.tracker_run_name, 
+                "dir": args.output_dir,
+                "group": group_name,
+                "job_type": "training",
+                "tags": [dataset_name, mode_str, model_variant] 
+            }
+        }        
+        
+        # 5. Add these clean strings to the config so you can "Group By" them
         tracker_config = dict(vars(args))
+        tracker_config["dataset_name"] = dataset_name
+        tracker_config["mode_str"] = mode_str 
+        tracker_config["model_variant"] = model_variant
+        
         accelerator.init_trackers(args.tracker_project_name, config=tracker_config, init_kwargs=init_kwargs)
 
     progress_bar = tqdm(range(0, args.max_train_steps), initial=global_step, desc="Steps", disable=not accelerator.is_local_main_process)
@@ -176,14 +216,20 @@ def main(args):
             with accelerator.accumulate(*l_acc):
                 x_src = batch["conditioning_pixel_values"].to(weight_dtype)
                 x_tgt = batch["output_pixel_values"].to(weight_dtype)
-                # Load depth map but only pass it if the model expects it
-                depth_map = batch["depth_pixel_values"].to(weight_dtype)
+                
+                # Load maps if present
+                depth_map = batch["depth_pixel_values"].to(weight_dtype) if "depth_pixel_values" in batch else None
+                canny_map = batch["canny_pixel_values"].to(weight_dtype) if "canny_pixel_values" in batch else None
                 
                 B, V, C, H, W = x_src.shape
 
-                # forward pass (depth_map passed only if it exists in logic, handled by model class)
-                # If model initialized with use_depth_adapter=False, it ignores the depth map inside forward
-                x_tgt_pred = net_difix(x_src, prompt_tokens=batch["input_ids"], depth_map=depth_map)        
+                # forward pass
+                x_tgt_pred = net_difix(
+                    x_src, 
+                    prompt_tokens=batch["input_ids"], 
+                    depth_map=depth_map,
+                    canny_map=canny_map
+                )
                 
                 x_tgt = rearrange(x_tgt, 'b v c h w -> (b v) c h w')
                 x_tgt_pred = rearrange(x_tgt_pred, 'b v c h w -> (b v) c h w')
@@ -238,17 +284,32 @@ def main(args):
                             "train/model_output": [wandb.Image(rearrange(x_tgt_pred, "b v c h w -> b c (v h) w")[idx].float().detach().cpu(), caption=f"idx={idx}") for idx in range(B)],
                         }
                         
-                        # FIXED: Handle depth map logging without rearrange (since it is [B, 1, H, W])
                         if depth_map is not None:
                             log_dict["train/depth"] = [wandb.Image(depth_map[idx].float().detach().cpu(), caption=f"idx={idx}") for idx in range(B)]
+                        if canny_map is not None:
+                            log_dict["train/canny"] = [wandb.Image(canny_map[idx].float().detach().cpu(), caption=f"idx={idx}") for idx in range(B)]
 
                         for k in log_dict:
                             logs[k] = log_dict[k]
 
-                    # checkpoint the model (FIXED: Added check for max_train_steps to save final model)
+                    # checkpoint the model
                     if global_step % args.checkpointing_steps == 1 or global_step == args.max_train_steps:
-                        outf = os.path.join(args.output_dir, "checkpoints", f"model_{global_step}.pkl")
+                        ckpt_dir = os.path.join(args.output_dir, "checkpoints")
+                        outf = os.path.join(ckpt_dir, f"model_{global_step}.pkl")
+                        
                         save_ckpt(accelerator.unwrap_model(net_difix), optimizer, outf)
+                        
+                        all_ckpts = glob(os.path.join(ckpt_dir, "model_*.pkl"))
+                        
+                        for ckpt in all_ckpts:
+                            if ckpt == outf:
+                                continue
+                            try:
+                                os.remove(ckpt)
+                                if accelerator.is_main_process:
+                                    print(f"Removed old checkpoint: {ckpt}")
+                            except OSError as e:
+                                print(f"Error deleting checkpoint {ckpt}: {e}")
 
                     # compute validation set L2, LPIPS
                     if args.eval_freq > 0 and global_step % args.eval_freq == 1:
@@ -260,16 +321,20 @@ def main(args):
                             x_src = batch_val["conditioning_pixel_values"].to(accelerator.device, dtype=weight_dtype)
                             x_tgt = batch_val["output_pixel_values"].to(accelerator.device, dtype=weight_dtype)
                             
-                            # Handle depth map for validation
-                            val_depth = None
-                            if "depth_pixel_values" in batch_val:
-                                val_depth = batch_val["depth_pixel_values"].to(accelerator.device, dtype=weight_dtype)
+                            # Handle depth/canny map for validation
+                            val_depth = batch_val["depth_pixel_values"].to(accelerator.device, dtype=weight_dtype) if "depth_pixel_values" in batch_val else None
+                            val_canny = batch_val["canny_pixel_values"].to(accelerator.device, dtype=weight_dtype) if "canny_pixel_values" in batch_val else None
                             
                             B, V, C, H, W = x_src.shape
                             assert B == 1, "Use batch size 1 for eval."
                             with torch.no_grad():
                                 # forward pass
-                                x_tgt_pred = accelerator.unwrap_model(net_difix)(x_src, prompt_tokens=batch_val["input_ids"].cuda(), depth_map=val_depth)
+                                x_tgt_pred = accelerator.unwrap_model(net_difix)(
+                                    x_src, 
+                                    prompt_tokens=batch_val["input_ids"].cuda(), 
+                                    depth_map=val_depth,
+                                    canny_map=val_canny
+                                )
                                 
                                 if step % 10 == 0:
                                     log_dict["sample/source"].append(wandb.Image(rearrange(x_src, "b v c h w -> b c (v h) w")[0].float().detach().cpu(), caption=f"idx={len(log_dict['sample/source'])}"))
@@ -337,6 +402,7 @@ if __name__ == "__main__":
     
     # New Flag: Use Depth Adapter
     parser.add_argument("--use_depth", action="store_true", help="Enable T2I Adapter for depth control")
+    parser.add_argument("--use_canny", action="store_true", help="Enable T2I Adapter for Canny edge control")
     parser.add_argument("--degrade_inputs", action="store_true", help="Apply blur/downscaling to input images during training")
 
     # training details

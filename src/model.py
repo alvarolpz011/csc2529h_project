@@ -97,11 +97,16 @@ def load_ckpt_from_state_dict(net_difix, optimizer, pretrained_path):
         _sd_unet[k] = sd["state_dict_unet"][k]
     net_difix.unet.load_state_dict(_sd_unet)
     
-    # Load Adapter weights if they exist
+    # Load Depth Adapter weights
     if "state_dict_adapter" in sd and net_difix.adapter is not None:
         net_difix.adapter.load_state_dict(sd["state_dict_adapter"])
+
+    # Load Canny Adapter weights
+    if "state_dict_adapter_canny" in sd and net_difix.adapter_canny is not None:
+        net_difix.adapter_canny.load_state_dict(sd["state_dict_adapter_canny"])
         
-    optimizer.load_state_dict(sd["optimizer"])
+    if optimizer is not None and "optimizer" in sd:
+        optimizer.load_state_dict(sd["optimizer"])
     
     return net_difix, optimizer
 
@@ -113,26 +118,32 @@ def save_ckpt(net_difix, optimizer, outf):
     sd["state_dict_unet"] = net_difix.unet.state_dict()
     sd["state_dict_vae"] = {k: v for k, v in net_difix.vae.state_dict().items() if "lora" in k or "skip" in k}
     
-    # Save Adapter weights
+    # Save Depth Adapter
     if net_difix.adapter is not None:
         sd["state_dict_adapter"] = net_difix.adapter.state_dict()
+
+    # Save Canny Adapter
+    if net_difix.adapter_canny is not None:
+        sd["state_dict_adapter_canny"] = net_difix.adapter_canny.state_dict()
     
-    sd["optimizer"] = optimizer.state_dict()    
+    sd["optimizer"] = optimizer.state_dict()      
     
     torch.save(sd, outf)
 
 
 class Difix(torch.nn.Module):
-    def __init__(self, pretrained_name=None, pretrained_path=None, ckpt_folder="checkpoints", lora_rank_vae=4, mv_unet=False, timestep=999, use_depth_adapter=False):
+    def __init__(self, pretrained_name=None, pretrained_path=None, ckpt_folder="checkpoints", lora_rank_vae=4, mv_unet=False, timestep=999, use_depth_adapter=False, use_canny_adapter=False):
         super().__init__()
+        # ... (Tokenizer, Text Encoder, Scheduler init remains same) ...
         self.tokenizer = AutoTokenizer.from_pretrained("stabilityai/sd-turbo", subfolder="tokenizer")
         self.text_encoder = CLIPTextModel.from_pretrained("stabilityai/sd-turbo", subfolder="text_encoder").cuda()
         self.sched = make_1step_sched()
 
+        # ... (VAE setup remains same) ...
         vae = AutoencoderKL.from_pretrained("stabilityai/sd-turbo", subfolder="vae")
         vae.encoder.forward = my_vae_encoder_fwd.__get__(vae.encoder, vae.encoder.__class__)
         vae.decoder.forward = my_vae_decoder_fwd.__get__(vae.decoder, vae.decoder.__class__)
-        # add the skip connection convs
+        # ... (Skip convs init remains same) ...
         vae.decoder.skip_conv_1 = torch.nn.Conv2d(512, 512, kernel_size=(1, 1), stride=(1, 1), bias=False).cuda()
         vae.decoder.skip_conv_2 = torch.nn.Conv2d(256, 512, kernel_size=(1, 1), stride=(1, 1), bias=False).cuda()
         vae.decoder.skip_conv_3 = torch.nn.Conv2d(128, 512, kernel_size=(1, 1), stride=(1, 1), bias=False).cuda()
@@ -159,14 +170,30 @@ class Difix(torch.nn.Module):
         else:
             self.adapter = None
 
+        # Initializing Canny Adapter
+        self.use_canny_adapter = use_canny_adapter
+        if self.use_canny_adapter:
+            self.adapter_canny = T2IAdapter(
+                in_channels=1,
+                channels=[320, 640, 1280, 1280],
+                num_res_blocks=2,
+                downscale_factor=8,
+                adapter_type="full_adapter"
+            ).cuda()
+        else:
+            self.adapter_canny = None
+
+        # ... (Loading weights logic update to include canny) ...
         if pretrained_path is not None:
             sd = torch.load(pretrained_path, map_location="cpu")
+            # ... (VAE LoRA loading remains same) ...
             vae_lora_config = LoraConfig(r=sd["rank_vae"], init_lora_weights="gaussian", target_modules=sd["vae_lora_target_modules"])
             vae.add_adapter(vae_lora_config, adapter_name="vae_skip")
             _sd_vae = vae.state_dict()
             for k in sd["state_dict_vae"]:
                 _sd_vae[k] = sd["state_dict_vae"][k]
             vae.load_state_dict(_sd_vae)
+            
             _sd_unet = unet.state_dict()
             for k in sd["state_dict_unet"]:
                 _sd_unet[k] = sd["state_dict_unet"][k]
@@ -174,11 +201,14 @@ class Difix(torch.nn.Module):
             
             if "state_dict_adapter" in sd and self.adapter is not None:
                 self.adapter.load_state_dict(sd["state_dict_adapter"])
+                
+            if "state_dict_adapter_canny" in sd and self.adapter_canny is not None:
+                self.adapter_canny.load_state_dict(sd["state_dict_adapter_canny"])
 
         elif pretrained_name is None and pretrained_path is None:
+            # ... (Random initialization logic remains same) ...
             print("Initializing model with random weights")
             target_modules_vae = []
-
             torch.nn.init.constant_(vae.decoder.skip_conv_1.weight, 1e-5)
             torch.nn.init.constant_(vae.decoder.skip_conv_2.weight, 1e-5)
             torch.nn.init.constant_(vae.decoder.skip_conv_3.weight, 1e-5)
@@ -187,7 +217,6 @@ class Difix(torch.nn.Module):
                 "skip_conv_1", "skip_conv_2", "skip_conv_3", "skip_conv_4",
                 "to_k", "to_q", "to_v", "to_out.0",
             ]
-            
             target_modules = []
             for id, (name, param) in enumerate(vae.named_modules()):
                 if 'decoder' in name and any(name.endswith(x) for x in target_modules_vae):
@@ -202,7 +231,7 @@ class Difix(torch.nn.Module):
             self.lora_rank_vae = lora_rank_vae
             self.target_modules_vae = target_modules_vae
 
-        # unet.enable_xformers_memory_efficient_attention()
+        # ... (Rest of init) ...
         unet.to("cuda")
         vae.to("cuda")
 
@@ -211,12 +240,13 @@ class Difix(torch.nn.Module):
         self.timesteps = torch.tensor([timestep], device="cuda").long()
         self.text_encoder.requires_grad_(False)
 
-        # print number of trainable parameters
         print("="*50)
         print(f"Number of trainable parameters in UNet: {sum(p.numel() for p in unet.parameters() if p.requires_grad) / 1e6:.2f}M")
         print(f"Number of trainable parameters in VAE: {sum(p.numel() for p in vae.parameters() if p.requires_grad) / 1e6:.2f}M")
         if self.adapter:
-            print(f"Number of trainable parameters in Adapter: {sum(p.numel() for p in self.adapter.parameters() if p.requires_grad) / 1e6:.2f}M")
+            print(f"Number of trainable parameters in Depth Adapter: {sum(p.numel() for p in self.adapter.parameters() if p.requires_grad) / 1e6:.2f}M")
+        if self.adapter_canny:
+            print(f"Number of trainable parameters in Canny Adapter: {sum(p.numel() for p in self.adapter_canny.parameters() if p.requires_grad) / 1e6:.2f}M")
         print("="*50)
 
     def set_eval(self):
@@ -227,6 +257,9 @@ class Difix(torch.nn.Module):
         if self.adapter:
             self.adapter.eval()
             self.adapter.requires_grad_(False)
+        if self.adapter_canny:
+            self.adapter_canny.eval()
+            self.adapter_canny.requires_grad_(False)
 
     def set_train(self):
         self.unet.train()
@@ -244,14 +277,15 @@ class Difix(torch.nn.Module):
         if self.adapter:
             self.adapter.train()
             self.adapter.requires_grad_(True)
+        if self.adapter_canny:
+            self.adapter_canny.train()
+            self.adapter_canny.requires_grad_(True)
 
-    def forward(self, x, timesteps=None, prompt=None, prompt_tokens=None, depth_map=None):
-        # either the prompt or the prompt_tokens should be provided
+    def forward(self, x, timesteps=None, prompt=None, prompt_tokens=None, depth_map=None, canny_map=None):
         assert (prompt is None) != (prompt_tokens is None), "Either prompt or prompt_tokens should be provided"
         assert (timesteps is None) != (self.timesteps is None), "Either timesteps or self.timesteps should be provided"
         
         if prompt is not None:
-            # encode the text prompt
             caption_tokens = self.tokenizer(prompt, max_length=self.tokenizer.model_max_length,
                                             padding="max_length", truncation=True, return_tensors="pt").input_ids.cuda()
             caption_enc = self.text_encoder(caption_tokens)[0]
@@ -265,24 +299,39 @@ class Difix(torch.nn.Module):
         
         unet_input = z
         
-        # Process Depth Adapter
+        # Process Adapters
+        residuals_depth = None
+        residuals_canny = None
         down_block_additional_residuals = None
+
+        # 1. Depth Adapter
         if self.adapter is not None and depth_map is not None:
-            # Ensure depth map depth matches batch/view count
-            # depth_map input is usually [B, 1, H, W]
-            # if we have views, we might need to rearrange or repeat
-            
-            # If the depth map came in as [B, V, 1, H, W] (from dataset)
             if depth_map.dim() == 5:
                 depth_map = rearrange(depth_map, 'b v c h w -> (b v) c h w')
             
-            # Safety check to ensure dimensions match unet input
             if depth_map.shape[0] != unet_input.shape[0]:
-                # Repeat for views if a single depth map provided for multiview (rare case)
                 depth_map = repeat(depth_map, 'b c h w -> (b v) c h w', v=num_views)
                 
-            down_block_additional_residuals = self.adapter(depth_map)
-        
+            residuals_depth = self.adapter(depth_map)
+
+        # 2. Canny Adapter
+        if self.adapter_canny is not None and canny_map is not None:
+            if canny_map.dim() == 5:
+                canny_map = rearrange(canny_map, 'b v c h w -> (b v) c h w')
+            
+            if canny_map.shape[0] != unet_input.shape[0]:
+                canny_map = repeat(canny_map, 'b c h w -> (b v) c h w', v=num_views)
+                
+            residuals_canny = self.adapter_canny(canny_map)
+
+        # Sum residuals
+        if residuals_depth is not None and residuals_canny is not None:
+            down_block_additional_residuals = [r1 + r2 for r1, r2 in zip(residuals_depth, residuals_canny)]
+        elif residuals_depth is not None:
+            down_block_additional_residuals = residuals_depth
+        elif residuals_canny is not None:
+            down_block_additional_residuals = residuals_canny
+       
         model_pred = self.unet(
             unet_input, 
             self.timesteps, 
@@ -297,7 +346,7 @@ class Difix(torch.nn.Module):
         
         return output_image
     
-    def sample(self, image, width, height, ref_image=None, timesteps=None, prompt=None, prompt_tokens=None, depth_map=None):
+    def sample(self, image, width, height, ref_image=None, timesteps=None, prompt=None, prompt_tokens=None, depth_map=None, canny_map=None):
         input_width, input_height = image.size
         new_width = image.width - image.width % 8
         new_height = image.height - image.height % 8
@@ -315,19 +364,29 @@ class Difix(torch.nn.Module):
             ref_image = ref_image.resize((new_width, new_height), Image.LANCZOS)
             x = torch.stack([T(image), T(ref_image)], dim=0).unsqueeze(0).cuda()
         
+        # Preprocess Depth
         d = None
         if depth_map is not None:
             T_d = transforms.Compose([
                 transforms.Resize((height, width), interpolation=transforms.InterpolationMode.NEAREST),
                 transforms.ToTensor(),
             ])
-            d = T_d(depth_map).unsqueeze(0).cuda() # [1, 1, H, W]
+            d = T_d(depth_map).unsqueeze(0).cuda() 
             if ref_image is not None:
-                # If using ref image, we duplicate depth or expect ref depth? 
-                # For simplicity, just repeat depth for ref
                 d = torch.stack([T_d(depth_map), T_d(depth_map)], dim=0).unsqueeze(0).cuda()
 
-        output_image = self.forward(x, timesteps, prompt, prompt_tokens, depth_map=d)[:, 0]
+        # Preprocess Canny
+        c = None
+        if canny_map is not None:
+            T_c = transforms.Compose([
+                transforms.Resize((height, width), interpolation=transforms.InterpolationMode.NEAREST),
+                transforms.ToTensor(),
+            ])
+            c = T_c(canny_map).unsqueeze(0).cuda()
+            if ref_image is not None:
+                c = torch.stack([T_c(canny_map), T_c(canny_map)], dim=0).unsqueeze(0).cuda()
+
+        output_image = self.forward(x, timesteps, prompt, prompt_tokens, depth_map=d, canny_map=c)[:, 0]
         output_pil = transforms.ToPILImage()(output_image[0].cpu() * 0.5 + 0.5)
         output_pil = output_pil.resize((input_width, input_height), Image.LANCZOS)
         
