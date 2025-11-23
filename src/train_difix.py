@@ -111,6 +111,10 @@ def main(args):
         num_warmup_steps=args.lr_warmup_steps * accelerator.num_processes,
         num_training_steps=args.max_train_steps * accelerator.num_processes,
         num_cycles=args.lr_num_cycles, power=args.lr_power,)
+    
+    if os.path.isdir(args.dataset_path):
+        dataset_name = os.path.basename(os.path.normpath(args.dataset_path))
+        args.dataset_path = os.path.join(args.dataset_path, f"{dataset_name}.json")
 
     dataset_train = PairedDataset(
         dataset_path=args.dataset_path, 

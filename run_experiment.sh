@@ -10,7 +10,10 @@ MAX_STEPS=2000  # Define this here so we can use it for checkpoint path
 # ==========================================
 # 2. AUTOMATED SETUP
 # ==========================================
-DATASET_PATH="data/${DATASET}.json"
+echo "Checking and preparing data for $DATASET..."
+python3 src/download_data.py --dataset $DATASET --data_dir data
+
+DATASET_PATH="data/${DATASET}"
 
 if [ "$DEGRADE" = true ]; then
     MODE="degraded"

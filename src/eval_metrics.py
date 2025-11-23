@@ -58,6 +58,10 @@ def evaluate(args):
     psnr = PeakSignalNoiseRatio(data_range=1.0).to(device)
     ssim = StructuralSimilarityIndexMeasure(data_range=1.0).to(device)
     lpips = LearnedPerceptualImagePatchSimilarity(net_type='vgg').to(device)
+    
+    if os.path.isdir(args.dataset_path):
+        dataset_name = os.path.basename(os.path.normpath(args.dataset_path))
+        args.dataset_path = os.path.join(args.dataset_path, f"{dataset_name}.json")
 
     # Load Data
     with open(args.dataset_path, 'r') as f:

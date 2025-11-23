@@ -15,8 +15,9 @@ mkdir -p /w/20252/<your_username>/Difix3D/data
 ln -s /w/20252/<your_username>/Difix3D/data data
 mkdir -p /w/20252/<your_username>/Difix3D/outputs
 ln -s /w/20252/<your_username>/Difix3D/outputs outputs
-python3 src/download_data.py
-python3 src/create_json.py
+
+# Download data
+python3 src/download_data.py --dataset lego
 ```
 
 -----
@@ -38,7 +39,7 @@ To run individual experiments, use the commands below.
 ```bash
 accelerate launch --mixed_precision=bf16 src/train_difix.py \
     --output_dir=./outputs/lego/clean/base \
-    --dataset_path="data/lego.json" \
+    --dataset_path="data/lego" \
     --max_train_steps 2000 \
     --num_training_epochs 50 \
     --resolution=512 \
@@ -54,7 +55,7 @@ accelerate launch --mixed_precision=bf16 src/train_difix.py \
 ```bash
 accelerate launch --mixed_precision=bf16 src/train_difix.py \
     --output_dir=./outputs/lego/clean/depth \
-    --dataset_path="data/lego.json" \
+    --dataset_path="data/lego" \
     --max_train_steps 2000 \
     --num_training_epochs 50 \
     --resolution=512 \
@@ -71,7 +72,7 @@ accelerate launch --mixed_precision=bf16 src/train_difix.py \
 ```bash
 accelerate launch --mixed_precision=bf16 src/train_difix.py \
     --output_dir=./outputs/lego/clean/canny \
-    --dataset_path="data/lego.json" \
+    --dataset_path="data/lego" \
     --max_train_steps 2000 \
     --num_training_epochs 50 \
     --resolution=512 \
@@ -88,7 +89,7 @@ accelerate launch --mixed_precision=bf16 src/train_difix.py \
 ```bash
 accelerate launch --mixed_precision=bf16 src/train_difix.py \
     --output_dir=./outputs/lego/clean/depth_canny \
-    --dataset_path="data/lego.json" \
+    --dataset_path="data/lego" \
     --max_train_steps 2000 \
     --num_training_epochs 50 \
     --resolution=512 \
@@ -105,7 +106,7 @@ accelerate launch --mixed_precision=bf16 src/train_difix.py \
 
 ```bash
 python3 src/eval_metrics.py \
-    --dataset_path data/lego.json \
+    --dataset_path data/lego \
     --checkpoint_path outputs/lego/clean/base/checkpoints/model_2000.pkl \
     --run_name "lego-clean-base"
 ```
