@@ -8,6 +8,8 @@ from huggingface_hub import snapshot_download
 PROMPTS = {
     "lego": "a high quality lego bulldozer",
     "drums": "a red drum set on a checkered floor",
+    "ship": "a detailed 3d render of a battleship on the ocean",
+    "ficus": "a high quality 3d render of a ficus plant in a pot"
 }
 
 def create_json(data_root, dataset_name):
@@ -35,8 +37,12 @@ def create_json(data_root, dataset_name):
     for rgb_path in rgb_files:
         file_id = rgb_path.stem
         
-        depth_name = f"{file_id}_depth_0001.png"
-        depth_path = source_dir / depth_name
+        depth_glob_pattern = f"{file_id}_depth_????.png"
+        depth_paths = list(source_dir.glob(depth_glob_pattern))
+        
+        depth_path = None
+        if depth_paths:
+            depth_path = depth_paths[0]
         
         entry = {
             "id": file_id,
@@ -45,7 +51,7 @@ def create_json(data_root, dataset_name):
             "prompt": prompt
         }
 
-        if depth_path.exists():
+        if depth_path and depth_path.exists():
             entry["depth_image"] = str(depth_path.absolute())
         else:
             print(f"  [Info] Missing depth for {file_id}")
@@ -99,7 +105,7 @@ def download_and_process(dataset_name, root_dir):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="lego", choices=["lego", "drums"], help="Name of the dataset to download")
+    parser.add_argument("--dataset", type=str, default="lego", choices=["lego", "drums", "ship", "ficus"], help="Name of the dataset to download")
     parser.add_argument("--data_dir", type=str, default="data", help="Root directory to store data")
     args = parser.parse_args()
     
