@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import argparse
 import random
 from pathlib import Path
@@ -8,8 +9,12 @@ from huggingface_hub import snapshot_download
 PROMPTS = {
     "lego": "a high quality lego bulldozer",
     "drums": "a red drum set on a checkered floor",
-    "ship": "a detailed 3d render of a battleship on the ocean",
-    "ficus": "a high quality 3d render of a ficus plant in a pot"
+    "hotdog": "a hotdog on a plate with mustard and ketchup",
+    "ficus": "a potted ficus plant on a plain background",
+    "chair": "a futuristic complex gold chair",
+    "mic": "a high quality studio microphone on a stand",
+    "ship": "a wooden sailing ship on a water surface",
+    "materials": "four spheres with different textures and materials",
 }
 
 def create_json(data_root, dataset_name):
@@ -23,7 +28,9 @@ def create_json(data_root, dataset_name):
         return
 
     all_files = sorted(list(source_dir.glob("r_*.png")))
-    rgb_files = [f for f in all_files if "depth" not in f.name]
+
+    rgb_pattern = re.compile(r"^r_\d+\.png$")
+    rgb_files = [f for f in all_files if rgb_pattern.match(f.name)]
 
     if not rgb_files:
         print("  [Warning] No RGB files found matching pattern r_*.png.")
@@ -105,7 +112,7 @@ def download_and_process(dataset_name, root_dir):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="lego", choices=["lego", "drums", "ship", "ficus"], help="Name of the dataset to download")
+    parser.add_argument("--dataset", type=str, default="lego", choices=["lego", "drums", "hotdog", "ficus", "chair", "mic", "ship", "materials"], help="Name of the dataset to download")
     parser.add_argument("--data_dir", type=str, default="data", help="Root directory to store data")
     args = parser.parse_args()
     
