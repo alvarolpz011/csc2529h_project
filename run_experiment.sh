@@ -3,9 +3,9 @@
 # ==========================================
 # 1. CONFIGURATION
 # ==========================================
-DATASET="materials"
+DATASET="lego"
 DEGRADE=true
-MAX_STEPS=2000  # Define this here so we can use it for checkpoint path
+MAX_STEPS=2000
 
 # ==========================================
 # 2. AUTOMATED SETUP
@@ -23,7 +23,6 @@ else
     DEGRADE_FLAG=""
 fi
 
-# Args for TRAINING
 COMMON_TRAIN_ARGS="--mixed_precision=bf16 src/train_difix.py \
     --dataset_path=$DATASET_PATH \
     --max_train_steps $MAX_STEPS \
@@ -34,7 +33,6 @@ COMMON_TRAIN_ARGS="--mixed_precision=bf16 src/train_difix.py \
     --lambda_lpips 1.0 --lambda_l2 1.0 --lambda_gram 1.0 \
     --tracker_project_name difix"
 
-# Args for EVAL (Simple python execution)
 COMMON_EVAL_ARGS="src/eval_metrics.py \
     --dataset_path=$DATASET_PATH \
     --resolution=512"
