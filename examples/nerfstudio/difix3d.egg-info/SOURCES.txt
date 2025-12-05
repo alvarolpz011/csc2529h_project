@@ -1,0 +1,13 @@
+pyproject.toml
+difix3d/difix3d.py
+difix3d/difix3d_config.py
+difix3d/difix3d_datamanager.py
+difix3d/difix3d_field.py
+difix3d/difix3d_pipeline.py
+difix3d/difix3d_trainer.py
+difix3d.egg-info/PKG-INFO
+difix3d.egg-info/SOURCES.txt
+difix3d.egg-info/dependency_links.txt
+difix3d.egg-info/entry_points.txt
+difix3d.egg-info/requires.txt
+difix3d.egg-info/top_level.txt
