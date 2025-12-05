@@ -3,8 +3,8 @@
 # ==========================================
 # 1. CONFIGURATION
 # ==========================================
-DATASET="lego"
-DEGRADE=false
+DATASET="materials"
+DEGRADE=true
 MAX_STEPS=2000  # Define this here so we can use it for checkpoint path
 
 # ==========================================
@@ -57,6 +57,13 @@ for item in "${VARIANTS[@]}"; do
     RUN_NAME="${DATASET}-${MODE}-${VARIANT_NAME}"
     OUTPUT_DIR="./outputs/${DATASET}/${MODE}/${VARIANT_NAME}"
     
+    CKPT_PATH="${OUTPUT_DIR}/checkpoints/model_${MAX_STEPS}.pkl"
+
+    if [ -f "$CKPT_PATH" ]; then
+        echo "--> [SKIP] Variant $VARIANT_NAME already completed (Found $CKPT_PATH)"
+        continue
+    fi
+    
     # ----------------------------------------
     # STEP 1: TRAINING
     # ----------------------------------------
@@ -72,9 +79,6 @@ for item in "${VARIANTS[@]}"; do
     # STEP 2: EVALUATION
     # ----------------------------------------
     echo "--> [EVAL] Evaluating Variant: $VARIANT_NAME"
-    
-    # Construct path to the final checkpoint (logic matches train script save)
-    CKPT_PATH="${OUTPUT_DIR}/checkpoints/model_${MAX_STEPS}.pkl"
     
     python3 $COMMON_EVAL_ARGS \
         --checkpoint_path="$CKPT_PATH" \
